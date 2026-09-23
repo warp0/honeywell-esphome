@@ -59,7 +59,7 @@ interval:
           while (id(uart_bus).available() > 0) {
             uint8_t byte;
             if (!id(uart_bus).read_byte(&byte)) {
-              break;
+              continue;
             }
 
             if (frame_pos == 0 && byte != 0xFE) {
