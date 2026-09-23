@@ -1,6 +1,7 @@
 esphome:
   name: honeywell_htram
-  platform: ESP32
+
+esp32:
   board: esp32dev
 
 wifi:
