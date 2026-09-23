@@ -38,6 +38,16 @@ interval:
   - interval: 1s
     then:
       - lambda: |-
+          static const uint8_t FRAME_HEADER_0 = 0xFE;
+          static const uint8_t FRAME_HEADER_1 = 0x04;
+          static const uint8_t FRAME_HEADER_2 = 0x02;
+          static const size_t FRAME_SIZE = 7;
+          static const size_t CRC_INPUT_SIZE = 5;
+          static const size_t VALUE_MSB_INDEX = 3;
+          static const size_t VALUE_LSB_INDEX = 4;
+          static const size_t CRC_LOW_INDEX = 5;
+          static const size_t CRC_HIGH_INDEX = 6;
+
           auto modbus_crc = [](const uint8_t *data, size_t len) {
             uint16_t crc = 0xFFFF;
             for (size_t i = 0; i < len; i++) {
@@ -53,7 +63,7 @@ interval:
             return crc;
           };
 
-          static uint8_t frame[7];
+          static uint8_t frame[FRAME_SIZE];
           static size_t frame_pos = 0;
 
           int pending_bytes = id(uart_bus).available();
@@ -63,21 +73,21 @@ interval:
               continue;
             }
 
-            if (frame_pos == 0 && byte != 0xFE) {
+            if (frame_pos == 0 && byte != FRAME_HEADER_0) {
               continue;
             }
 
-            if (frame_pos == 1 && byte != 0x04) {
+            if (frame_pos == 1 && byte != FRAME_HEADER_1) {
               frame_pos = 0;
-              if (byte == 0xFE) {
+              if (byte == FRAME_HEADER_0) {
                 frame[frame_pos++] = byte;
               }
               continue;
             }
 
-            if (frame_pos == 2 && byte != 0x02) {
+            if (frame_pos == 2 && byte != FRAME_HEADER_2) {
               frame_pos = 0;
-              if (byte == 0xFE) {
+              if (byte == FRAME_HEADER_0) {
                 frame[frame_pos++] = byte;
               }
               continue;
@@ -85,16 +95,17 @@ interval:
 
             frame[frame_pos++] = byte;
 
-            if (frame_pos == sizeof(frame)) {
+            if (frame_pos == FRAME_SIZE) {
               frame_pos = 0;
 
-              const uint16_t expected_crc = modbus_crc(frame, 5);
+              const uint16_t expected_crc = modbus_crc(frame, CRC_INPUT_SIZE);
               const uint16_t reported_crc =
-                  static_cast<uint16_t>(frame[5]) |
-                  (static_cast<uint16_t>(frame[6]) << 8);
+                  static_cast<uint16_t>(frame[CRC_LOW_INDEX]) |
+                  (static_cast<uint16_t>(frame[CRC_HIGH_INDEX]) << 8);
 
               if (expected_crc == reported_crc) {
-                const int value = (frame[3] << 8) | frame[4];
+                const int value =
+                    (frame[VALUE_MSB_INDEX] << 8) | frame[VALUE_LSB_INDEX];
                 id(co2_value) = value;
                 id(co2_sensor).publish_state(value);
               }
