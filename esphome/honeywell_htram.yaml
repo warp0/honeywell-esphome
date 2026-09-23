@@ -56,7 +56,8 @@ interval:
           static uint8_t frame[7];
           static size_t frame_pos = 0;
 
-          while (id(uart_bus).available() > 0) {
+          int pending_bytes = id(uart_bus).available();
+          while (pending_bytes-- > 0) {
             uint8_t byte;
             if (!id(uart_bus).read_byte(&byte)) {
               continue;
